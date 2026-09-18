@@ -59,7 +59,6 @@ The similarity between movies is then calculated using **Cosine Similarity**.
 
 ### Basic Workflow
 
-```text
 Movie Dataset
      ↓
 Extract Movie Features
@@ -74,4 +73,186 @@ Sort Movies by Similarity
      ↓
 Select Top 5 Movies
      ↓
-Display Recommendations
+Display Recommendation
+
+
+
+## 🛠️ Tech Stack
+
+* **Language:** Java
+* **Libraries:**
+* **API:** OMDb API
+* **Dataset:** movies.csv
+
+---
+
+## ⚙️ How It Works
+
+1. The dataset is loaded and cleaned
+2. Important features (genres, keywords, overview) are combined
+3. Text data is converted into numerical form using CountVectorizer
+4. Cosine similarity is calculated between movies
+5. User selects a movie from the GUI
+6. System recommends top 5 similar movies
+7. Movie details and poster are fetched using API
+
+---
+
+## 📂 Project Structure
+
+```
+├── Movie Reccomandation.py
+├── movies.csv
+├── PROJECT REPORT JAVA.docx
+└── README.md
+```
+
+---
+
+## 🚀 Installation & Setup
+
+### 1️⃣ Clone the repository
+
+```
+git clone https://github.com/your-username/movie-recommendation-system.git
+cd movie-recommendation-system
+```
+
+### 2️⃣ Install dependencies
+
+
+### 3️⃣ Add Dataset
+
+* Place `movies.csv` in the project folder
+* Update file path in code if required
+
+### 4️⃣ Add API Key
+
+* Get API key from: http://www.omdbapi.com/
+* Replace in code:
+
+```python
+API_KEY = "YOUR_API_KEY"
+```
+
+### 5️⃣ Run the project
+
+```
+Java "Main.java"
+```
+
+---
+
+## 🖥️ Output
+
+* Select a movie from dropdown
+* Click **Recommend**
+* Get:
+
+  * ✅ Top 5 recommended movies
+  * 🎬 Movie poster
+  * 📅 Year
+  * 🎭 Actors
+  * 🎬 Director
+  * ⭐ IMDb rating
+
+---
+
+## 📊 Algorithm Used
+
+* Content-Based Filtering
+* Count Vectorization
+* Cosine Similarity
+
+---
+
+## ✅ Advantages
+
+* Simple and easy to use
+* No user data required
+* Fast recommendations
+* Interactive GUI
+
+---
+
+## ⚠️ Limitations
+
+* No personalized recommendations
+* Depends on dataset quality
+* Requires internet for API
+* Limited diversity in results
+
+---
+
+## 🔮 Future Enhancements
+
+* Add collaborative filtering
+* Improve UI design
+* Deploy as web app (Streamlit/Flask)
+* Add user authentication
+* Use deep learning models
+
+---
+
+## 🌍 Real-World Applications
+
+* OTT platforms (Netflix, Prime Video)
+* E-commerce recommendations
+* Music streaming apps
+* Content discovery systems
+
+---
+
+## 👨‍💻 Author
+
+**Abhigyan Tiwari**
+CSE (AI-ML)
+
+---
+
+## 📚 References
+
+1. Oracle Java Documentation  
+   Java SE Documentation – Classes, Collections, Swing, File Handling and HTTP Client  
+   https://docs.oracle.com/en/java/
+
+2. Java Swing Documentation  
+   Oracle Java Swing Documentation  
+   https://docs.oracle.com/javase/tutorial/uiswing/
+
+3. Java HTTP Client Documentation  
+   Oracle Java Documentation – `java.net.http.HttpClient`  
+   https://docs.oracle.com/en/java/javase/11/docs/api/java.net.http/java/net/http/HttpClient.html
+
+4. OMDb API  
+   Open Movie Database API – Used for retrieving movie details, IMDb ratings and posters  
+   https://www.omdbapi.com/
+
+5. OMDb API Documentation  
+   OMDb API Documentation and API Key Information  
+   https://www.omdbapi.com/apikey.aspx
+
+6. Scikit-learn Documentation  
+   Cosine Similarity and Machine Learning Concepts  
+   https://scikit-learn.org/
+
+7. Kaggle  
+   Dataset and machine learning resources  
+   https://www.kaggle.com/
+
+8. GitHub  
+   Source-code hosting and project version control  
+   https://github.com/
+
+9. Apache Commons CSV Documentation  
+   Reference for CSV data processing concepts  
+   https://commons.apache.org/proper/commons-csv/
+
+10. Recommender Systems – Content-Based Filtering  
+    General reference for content-based recommendation systems and similarity-based recommendations.
+
+---
+
+## ⭐ If you like this project
+
+Give it a ⭐ on GitHub!
