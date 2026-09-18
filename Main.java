@@ -1,53 +1,23 @@
 import java.io.*;
-import java.net.URI;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.net.*;
+import java.net.http.*;
 import java.nio.charset.StandardCharsets;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.Comparator;
-import java.util.List;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
+import java.util.regex.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.BorderLayout;
-import java.awt.Font;
-import java.awt.Image;
+import java.awt.*;
+import java.awt.event.*;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-
-
-/*
- * ============================================================
- * MOVIE CLASS
- * ============================================================
- */
 class Movie {
-
-    String title;
-    String genres;
-    String keywords;
-    String overview;
+    String title, genres, keywords, overview;
     double rating;
 
     Movie(String title, String genres, String keywords,
           String overview, double rating) {
-
         this.title = title;
         this.genres = genres;
         this.keywords = keywords;
@@ -56,24 +26,11 @@ class Movie {
     }
 }
 
-
-/*
- * ============================================================
- * OMDB MOVIE CLASS
- * ============================================================
- */
 class OMDbMovie {
-
-    String title;
-    String year;
-    String director;
-    String actors;
-    String imdbRating;
-    String poster;
+    String title, year, director, actors, imdbRating, poster;
 
     OMDbMovie(String title, String year, String director,
               String actors, String imdbRating, String poster) {
-
         this.title = title;
         this.year = year;
         this.director = director;
@@ -83,128 +40,46 @@ class OMDbMovie {
     }
 }
 
-
-/*
- * ============================================================
- * MAIN CLASS
- * ============================================================
- */
 public class Main extends JFrame {
-
-    // ---------------------------------------------------------
-    // Global movie list
-    // ---------------------------------------------------------
 
     static ArrayList<Movie> movies = new ArrayList<>();
 
-
-    // ---------------------------------------------------------
-    // GUI components
-    // ---------------------------------------------------------
-
-    JComboBox<String> movieComboBox;
-
+    JComboBox<String> movieBox;
     JTextArea resultArea;
-
-    JLabel statusLabel;
-
-    JLabel posterLabel;
-
+    JLabel posterLabel, statusLabel;
     JButton recommendButton;
 
-
-    // ---------------------------------------------------------
-    // Constructor
-    // ---------------------------------------------------------
-
     public Main() {
-
         createGUI();
     }
 
-
-    // =========================================================
-    // LOAD MOVIES FROM CSV
-    // =========================================================
+    // ---------------- LOAD CSV ----------------
 
     static void loadMovies(String fileName) {
 
-        try {
+        try (BufferedReader br = new BufferedReader(new FileReader(fileName))) {
 
-            BufferedReader br =
-                    new BufferedReader(new FileReader(fileName));
+            String header = br.readLine();
 
-            String headerLine = br.readLine();
-
-            if (headerLine == null) {
-
+            if (header == null) {
                 System.out.println("CSV file is empty.");
-                br.close();
                 return;
             }
 
+            ArrayList<String> headers = parseCSV(header);
 
-            // -------------------------------------------------
-            // Find column positions
-            // -------------------------------------------------
+            int titleIndex = findColumn(headers, "title");
+            int genresIndex = findColumn(headers, "genres");
+            int keywordsIndex = findColumn(headers, "keywords");
+            int overviewIndex = findColumn(headers, "overview");
+            int ratingIndex = findColumn(headers, "vote_average");
 
-            ArrayList<String> headers = parseCSV(headerLine);
+            if (titleIndex == -1 || genresIndex == -1 ||
+                keywordsIndex == -1 || overviewIndex == -1) {
 
-            int titleIndex =
-                    findColumn(headers, "title");
-
-            int genresIndex =
-                    findColumn(headers, "genres");
-
-            int keywordsIndex =
-                    findColumn(headers, "keywords");
-
-            int overviewIndex =
-                    findColumn(headers, "overview");
-
-            int ratingIndex =
-                    findColumn(headers, "vote_average");
-
-
-            // -------------------------------------------------
-            // Check required columns
-            // -------------------------------------------------
-
-            if (titleIndex == -1) {
-
-                System.out.println("Title column not found.");
-                br.close();
+                System.out.println("Required columns are missing.");
                 return;
             }
-
-
-            if (genresIndex == -1) {
-
-                System.out.println("Genres column not found.");
-                br.close();
-                return;
-            }
-
-
-            if (keywordsIndex == -1) {
-
-                System.out.println("Keywords column not found.");
-                br.close();
-                return;
-            }
-
-
-            if (overviewIndex == -1) {
-
-                System.out.println("Overview column not found.");
-                br.close();
-                return;
-            }
-
-
-            // -------------------------------------------------
-            // Read every movie
-            // -------------------------------------------------
 
             String line;
 
@@ -212,524 +87,270 @@ public class Main extends JFrame {
 
                 ArrayList<String> row = parseCSV(line);
 
-
-                if (row.size() <= titleIndex) {
+                if (row.size() <= titleIndex)
                     continue;
-                }
 
+                String title = getValue(row, titleIndex);
 
-                String title =
-                        getValue(row, titleIndex);
-
-
-                if (title.trim().isEmpty()) {
+                if (title.isEmpty())
                     continue;
-                }
 
+                String genres = getValue(row, genresIndex);
+                String keywords = getValue(row, keywordsIndex);
+                String overview = getValue(row, overviewIndex);
 
-                String genres =
-                        getValue(row, genresIndex);
-
-                String keywords =
-                        getValue(row, keywordsIndex);
-
-                String overview =
-                        getValue(row, overviewIndex);
-
-
-                double rating = 0.0;
-
+                double rating = 0;
 
                 if (ratingIndex != -1) {
-
                     try {
-
-                        rating =
-                                Double.parseDouble(
-                                        getValue(row, ratingIndex)
-                                );
-
+                        rating = Double.parseDouble(
+                                getValue(row, ratingIndex));
                     } catch (Exception e) {
-
-                        rating = 0.0;
+                        rating = 0;
                     }
                 }
 
-
-                Movie movie =
-                        new Movie(
-                                title,
-                                extractNames(genres),
-                                extractNames(keywords),
-                                overview,
-                                rating
-                        );
-
-
-                movies.add(movie);
+                movies.add(new Movie(
+                        title,
+                        extractNames(genres),
+                        extractNames(keywords),
+                        overview,
+                        rating
+                ));
             }
 
-
-            br.close();
-
-
-            System.out.println(
-                    "Movies loaded successfully: "
-                            + movies.size()
-            );
+            System.out.println("Movies loaded: " + movies.size());
 
         } catch (Exception e) {
-
-            System.out.println(
-                    "Error loading CSV: "
-                            + e.getMessage()
-            );
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
+    // ---------------- CSV FUNCTIONS ----------------
 
-    // =========================================================
-    // FIND COLUMN
-    // =========================================================
-
-    static int findColumn(
-            ArrayList<String> headers,
-            String columnName) {
+    static int findColumn(ArrayList<String> headers, String name) {
 
         for (int i = 0; i < headers.size(); i++) {
+            String h = headers.get(i)
+                    .replace("\"", "")
+                    .trim()
+                    .toLowerCase();
 
-            String header =
-                    headers.get(i)
-                            .trim()
-                            .replace("\"", "")
-                            .toLowerCase();
-
-            if (header.equals(columnName.toLowerCase())) {
-
+            if (h.equals(name.toLowerCase()))
                 return i;
-            }
         }
 
         return -1;
     }
 
+    static String getValue(ArrayList<String> row, int index) {
 
-    // =========================================================
-    // GET CSV VALUE
-    // =========================================================
-
-    static String getValue(
-            ArrayList<String> row,
-            int index) {
-
-        if (index >= 0 && index < row.size()) {
-
+        if (index >= 0 && index < row.size())
             return row.get(index)
                     .replace("\uFEFF", "")
                     .trim();
-        }
 
         return "";
     }
 
-
-    // =========================================================
-    // CSV PARSER
-    // =========================================================
-
     static ArrayList<String> parseCSV(String line) {
 
-        ArrayList<String> values =
-                new ArrayList<>();
-
-        StringBuilder current =
-                new StringBuilder();
-
-        boolean insideQuotes = false;
-
+        ArrayList<String> values = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean quotes = false;
 
         for (int i = 0; i < line.length(); i++) {
 
             char c = line.charAt(i);
 
-
             if (c == '"') {
 
-                if (insideQuotes
-                        && i + 1 < line.length()
+                if (quotes && i + 1 < line.length()
                         && line.charAt(i + 1) == '"') {
-
                     current.append('"');
                     i++;
-
                 } else {
-
-                    insideQuotes = !insideQuotes;
+                    quotes = !quotes;
                 }
 
-            }
-
-            else if (c == ',' && !insideQuotes) {
+            } else if (c == ',' && !quotes) {
 
                 values.add(current.toString());
                 current.setLength(0);
 
-            }
-
-            else {
-
+            } else {
                 current.append(c);
             }
         }
 
-
         values.add(current.toString());
-
-
         return values;
     }
 
-
-    // =========================================================
-    // EXTRACT NAMES FROM JSON-LIKE GENRE/KEYWORD DATA
-    // =========================================================
+    // ---------------- FEATURE EXTRACTION ----------------
 
     static String extractNames(String text) {
 
-        if (text == null || text.trim().isEmpty()) {
-
+        if (text == null || text.isEmpty())
             return "";
-        }
-
-
-        StringBuilder result =
-                new StringBuilder();
-
 
         Pattern pattern =
-                Pattern.compile(
-                        "\"name\"\\s*:\\s*\"([^\"]+)\""
-                );
+                Pattern.compile("\"name\"\\s*:\\s*\"([^\"]+)\"");
 
-
-        Matcher matcher =
-                pattern.matcher(text);
-
+        Matcher matcher = pattern.matcher(text);
+        StringBuilder result = new StringBuilder();
 
         while (matcher.find()) {
-
             result.append(
                     matcher.group(1)
                             .toLowerCase()
                             .replace(" ", "_")
-            );
-
-            result.append(" ");
+            ).append(" ");
         }
 
-
-        // If no JSON-style names were found,
-        // use the original text.
-
-        if (result.length() == 0) {
-
-            return text
-                    .toLowerCase()
+        if (result.length() == 0)
+            return text.toLowerCase()
                     .replaceAll("[^a-zA-Z0-9 ]", " ");
-        }
-
 
         return result.toString();
     }
 
+    // ---------------- TEXT VECTOR ----------------
 
-    // =========================================================
-    // CREATE WORD-FREQUENCY VECTOR
-    // =========================================================
+    static Map<String, Integer> createVector(String text) {
 
-    static Map<String, Integer> createVector(
-            String text) {
+        Map<String, Integer> vector = new HashMap<>();
 
-        Map<String, Integer> vector =
-                new HashMap<>();
-
-
-        if (text == null) {
+        if (text == null)
             return vector;
-        }
 
-
-        String cleaned =
-                text.toLowerCase()
-                        .replaceAll("[^a-zA-Z0-9_ ]", " ");
-
-
-        String[] words =
-                cleaned.split("\\s+");
-
+        String[] words = text.toLowerCase()
+                .replaceAll("[^a-zA-Z0-9_ ]", " ")
+                .split("\\s+");
 
         for (String word : words) {
 
-            if (word.trim().isEmpty()) {
-                continue;
-            }
-
-
-            vector.put(
-                    word,
-                    vector.getOrDefault(word, 0) + 1
-            );
+            if (!word.isEmpty())
+                vector.put(
+                        word,
+                        vector.getOrDefault(word, 0) + 1
+                );
         }
-
 
         return vector;
     }
 
-
-    // =========================================================
-    // COSINE SIMILARITY
-    // =========================================================
+    // ---------------- COSINE SIMILARITY ----------------
 
     static double cosineSimilarity(
-            Map<String, Integer> vector1,
-            Map<String, Integer> vector2) {
+            Map<String, Integer> a,
+            Map<String, Integer> b) {
 
-        Set<String> allWords =
-                new HashSet<>();
+        Set<String> words = new HashSet<>();
+        words.addAll(a.keySet());
+        words.addAll(b.keySet());
 
+        double dot = 0;
+        double magA = 0;
+        double magB = 0;
 
-        allWords.addAll(vector1.keySet());
-        allWords.addAll(vector2.keySet());
+        for (String word : words) {
 
+            int x = a.getOrDefault(word, 0);
+            int y = b.getOrDefault(word, 0);
 
-        double dotProduct = 0.0;
-
-        double magnitude1 = 0.0;
-
-        double magnitude2 = 0.0;
-
-
-        for (String word : allWords) {
-
-            int value1 =
-                    vector1.getOrDefault(word, 0);
-
-            int value2 =
-                    vector2.getOrDefault(word, 0);
-
-
-            dotProduct +=
-                    value1 * value2;
-
-
-            magnitude1 +=
-                    value1 * value1;
-
-
-            magnitude2 +=
-                    value2 * value2;
+            dot += x * y;
+            magA += x * x;
+            magB += y * y;
         }
 
+        if (magA == 0 || magB == 0)
+            return 0;
 
-        if (magnitude1 == 0
-                || magnitude2 == 0) {
-
-            return 0.0;
-        }
-
-
-        return dotProduct /
-                (Math.sqrt(magnitude1)
-                        * Math.sqrt(magnitude2));
+        return dot / (Math.sqrt(magA) * Math.sqrt(magB));
     }
 
+    // ---------------- RECOMMENDATIONS ----------------
 
-    // =========================================================
-    // FIND MOVIE
-    // =========================================================
+    static ArrayList<MovieScore> recommend(Movie selected) {
 
-    static Movie findMovie(String title) {
-
-        for (Movie movie : movies) {
-
-            if (movie.title.equals(title)) {
-
-                return movie;
-            }
-        }
-
-        return null;
-    }
-
-
-    // =========================================================
-    // CALCULATE RECOMMENDATIONS
-    // =========================================================
-
-    static ArrayList<MovieScore> calculateRecommendations(
-            Movie selectedMovie) {
-
-
-        ArrayList<MovieScore> scores =
-                new ArrayList<>();
-
+        ArrayList<MovieScore> result = new ArrayList<>();
 
         String selectedText =
-                selectedMovie.genres + " "
-                        + selectedMovie.keywords + " "
-                        + selectedMovie.overview;
-
+                selected.genres + " " +
+                selected.keywords + " " +
+                selected.overview;
 
         Map<String, Integer> selectedVector =
                 createVector(selectedText);
 
-
         for (Movie movie : movies) {
 
-            if (movie == selectedMovie) {
+            if (movie == selected)
                 continue;
-            }
 
+            String text =
+                    movie.genres + " " +
+                    movie.keywords + " " +
+                    movie.overview;
 
-            String movieText =
-                    movie.genres + " "
-                            + movie.keywords + " "
-                            + movie.overview;
-
-
-            Map<String, Integer> movieVector =
-                    createVector(movieText);
-
-
-            double similarity =
-                    cosineSimilarity(
-                            selectedVector,
-                            movieVector
-                    );
-
-
-            scores.add(
-                    new MovieScore(
-                            movie,
-                            similarity
-                    )
+            double similarity = cosineSimilarity(
+                    selectedVector,
+                    createVector(text)
             );
+
+            result.add(new MovieScore(movie, similarity));
         }
 
-
-        // Sort by similarity
-
-        scores.sort(
+        result.sort(
                 Comparator.comparingDouble(
                         MovieScore::getScore
                 ).reversed()
         );
 
-
-        // Return top 5
-
-        ArrayList<MovieScore> topFive =
-                new ArrayList<>();
-
-
-        for (int i = 0;
-             i < Math.min(5, scores.size());
-             i++) {
-
-            topFive.add(scores.get(i));
-        }
-
-
-        return topFive;
+        return new ArrayList<>(
+                result.subList(
+                        0,
+                        Math.min(5, result.size())
+                )
+        );
     }
-
-
-    // =========================================================
-    // MOVIE SCORE CLASS
-    // =========================================================
 
     static class MovieScore {
 
         Movie movie;
-
         double score;
 
-
-        MovieScore(
-                Movie movie,
-                double score) {
-
+        MovieScore(Movie movie, double score) {
             this.movie = movie;
             this.score = score;
         }
 
-
         double getScore() {
-
             return score;
         }
     }
 
+    // ---------------- OMDB API ----------------
 
-    // =========================================================
-    // OMDB API
-    // =========================================================
-
-    static OMDbMovie getOMDbMovie(
-            String movieName) {
+    static OMDbMovie getOMDbMovie(String movieName) {
 
         try {
 
-            // -------------------------------------------------
-            // Read API key from environment variable
-            // -------------------------------------------------
+            String apiKey = "15c9be74";
 
-            String apiKey = "15c9be74";;
-
-
-            if (apiKey == null
-                    || apiKey.trim().isEmpty()) {
-
-                System.out.println(
-                        "OMDB_API_KEY environment variable "
-                                + "is not set."
-                );
-
-                return null;
-            }
-
-
-            // -------------------------------------------------
-            // Encode movie title
-            // -------------------------------------------------
-
-            String encodedTitle =
-                    URLEncoder.encode(
-                            movieName,
-                            StandardCharsets.UTF_8
-                    );
-
-
-            // -------------------------------------------------
-            // OMDb URL
-            // -------------------------------------------------
+            String title = URLEncoder.encode(
+                    movieName,
+                    StandardCharsets.UTF_8
+            );
 
             String url =
-                    "https://www.omdbapi.com/"
-                            + "?apikey="
-                            + apiKey
-                            + "&t="
-                            + encodedTitle
-                            + "&plot=short";
+                    "https://www.omdbapi.com/?" +
+                    "apikey=" + apiKey +
+                    "&t=" + title +
+                    "&plot=short";
 
-
-            // -------------------------------------------------
-            // Create HTTP client
-            // -------------------------------------------------
-
-            HttpClient client =
-                    HttpClient.newHttpClient();
-
+            HttpClient client = HttpClient.newHttpClient();
 
             HttpRequest request =
                     HttpRequest.newBuilder()
@@ -737,150 +358,49 @@ public class Main extends JFrame {
                             .GET()
                             .build();
 
-
-            // -------------------------------------------------
-            // Send request
-            // -------------------------------------------------
-
             HttpResponse<String> response =
                     client.send(
                             request,
                             HttpResponse.BodyHandlers.ofString()
                     );
 
-
-            if (response.statusCode() != 200) {
-
-                System.out.println(
-                        "OMDb HTTP Error: "
-                                + response.statusCode()
-                );
-
+            if (response.statusCode() != 200)
                 return null;
-            }
 
-
-            String json =
-                    response.body();
-
-
-            // -------------------------------------------------
-            // Check API response
-            // -------------------------------------------------
-
-            String responseStatus =
-                    extractJSONValue(
-                            json,
-                            "Response"
-                    );
-
+            String json = response.body();
 
             if ("False".equalsIgnoreCase(
-                    responseStatus)) {
-
-                System.out.println(
-                        "Movie not found in OMDb: "
-                                + movieName
-                );
-
+                    jsonValue(json, "Response")))
                 return null;
-            }
-
-
-            // -------------------------------------------------
-            // Extract movie information
-            // -------------------------------------------------
-
-            String title =
-                    extractJSONValue(
-                            json,
-                            "Title"
-                    );
-
-
-            String year =
-                    extractJSONValue(
-                            json,
-                            "Year"
-                    );
-
-
-            String director =
-                    extractJSONValue(
-                            json,
-                            "Director"
-                    );
-
-
-            String actors =
-                    extractJSONValue(
-                            json,
-                            "Actors"
-                    );
-
-
-            String imdbRating =
-                    extractJSONValue(
-                            json,
-                            "imdbRating"
-                    );
-
-
-            String poster =
-                    extractJSONValue(
-                            json,
-                            "Poster"
-                    );
-
 
             return new OMDbMovie(
-                    title,
-                    year,
-                    director,
-                    actors,
-                    imdbRating,
-                    poster
+                    jsonValue(json, "Title"),
+                    jsonValue(json, "Year"),
+                    jsonValue(json, "Director"),
+                    jsonValue(json, "Actors"),
+                    jsonValue(json, "imdbRating"),
+                    jsonValue(json, "Poster")
             );
-
 
         } catch (Exception e) {
 
             System.out.println(
-                    "OMDb API Error: "
-                            + e.getMessage()
+                    "OMDb Error: " + e.getMessage()
             );
 
             return null;
         }
     }
 
-
-    // =========================================================
-    // SIMPLE JSON VALUE EXTRACTOR
-    // =========================================================
-
-    static String extractJSONValue(
-            String json,
-            String key) {
-
-        if (json == null) {
-            return "";
-        }
-
+    static String jsonValue(String json, String key) {
 
         String pattern =
-                "\""
-                        + Pattern.quote(key)
-                        + "\"\\s*:\\s*\"([^\"]*)\"";
-
-
-        Pattern compiledPattern =
-                Pattern.compile(pattern);
-
+                "\"" + Pattern.quote(key) +
+                "\"\\s*:\\s*\"([^\"]*)\"";
 
         Matcher matcher =
-                compiledPattern.matcher(json);
-
+                Pattern.compile(pattern)
+                        .matcher(json);
 
         if (matcher.find()) {
 
@@ -890,829 +410,363 @@ public class Main extends JFrame {
                     .replace("\\\\", "\\");
         }
 
-
         return "";
     }
 
-
-    // =========================================================
-    // CREATE GUI
-    // =========================================================
+    // ---------------- GUI ----------------
 
     void createGUI() {
 
-        setTitle(
-                "Movie Recommendation System"
-        );
-
-
-        setSize(
-                1000,
-                700
-        );
-
-
-        setMinimumSize(
-                new Dimension(850, 600)
-        );
-
-
-        setDefaultCloseOperation(
-                JFrame.EXIT_ON_CLOSE
-        );
-
-
+        setTitle("Movie Recommendation System");
+        setSize(1000, 700);
+        setMinimumSize(new Dimension(850, 600));
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
+        JPanel main = new JPanel(
+                new BorderLayout(15, 15)
+        );
 
-        // -----------------------------------------------------
-        // Main panel
-        // -----------------------------------------------------
+        main.setBackground(new Color(25, 25, 25));
+        main.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        JPanel mainPanel =
-                new JPanel(
-                        new BorderLayout(15, 15)
-                );
+        JLabel title = new JLabel(
+                "MOVIE RECOMMENDATION SYSTEM",
+                SwingConstants.CENTER
+        );
 
+        title.setFont(
+                new Font("Arial", Font.BOLD, 28)
+        );
 
-        mainPanel.setBackground(
+        title.setForeground(Color.WHITE);
+
+        main.add(title, BorderLayout.NORTH);
+
+        JPanel controls = new JPanel(
+                new BorderLayout(10, 10)
+        );
+
+        controls.setBackground(
                 new Color(25, 25, 25)
         );
 
-
-        mainPanel.setBorder(
-                new EmptyBorder(
-                        20,
-                        20,
-                        20,
-                        20
-                )
+        JLabel label = new JLabel("Select a Movie:");
+        label.setForeground(Color.WHITE);
+        label.setFont(
+                new Font("Arial", Font.BOLD, 16)
         );
 
+        controls.add(label, BorderLayout.WEST);
 
-        // -----------------------------------------------------
-        // Title
-        // -----------------------------------------------------
+        movieBox = new JComboBox<>();
 
-        JLabel titleLabel =
-                new JLabel(
-                        "MOVIE RECOMMENDATION SYSTEM",
-                        SwingConstants.CENTER
-                );
+        for (Movie movie : movies)
+            movieBox.addItem(movie.title);
 
+        controls.add(movieBox, BorderLayout.CENTER);
 
-        titleLabel.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        28
-                )
-        );
+        recommendButton = new JButton("Recommend");
 
-
-        titleLabel.setForeground(
-                Color.WHITE
-        );
-
-
-        mainPanel.add(
-                titleLabel,
-                BorderLayout.NORTH
-        );
-
-
-        // -----------------------------------------------------
-        // Top control panel
-        // -----------------------------------------------------
-
-        JPanel controlPanel =
-                new JPanel(
-                        new BorderLayout(10, 10)
-                );
-
-
-        controlPanel.setBackground(
-                new Color(25, 25, 25)
-        );
-
-
-        JLabel selectLabel =
-                new JLabel(
-                        "Select a Movie:"
-                );
-
-
-        selectLabel.setForeground(
-                Color.WHITE
-        );
-
-
-        selectLabel.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        16
-                )
-        );
-
-
-        controlPanel.add(
-                selectLabel,
-                BorderLayout.WEST
-        );
-
-
-        // -----------------------------------------------------
-        // Movie ComboBox
-        // -----------------------------------------------------
-
-        movieComboBox =
-                new JComboBox<>();
-
-
-        movieComboBox.setFont(
-                new Font(
-                        "Arial",
-                        Font.PLAIN,
-                        14
-                )
-        );
-
-
-        for (Movie movie : movies) {
-
-            movieComboBox.addItem(
-                    movie.title
-            );
-        }
-
-
-        controlPanel.add(
-                movieComboBox,
-                BorderLayout.CENTER
-        );
-
-
-        // -----------------------------------------------------
-        // Recommend button
-        // -----------------------------------------------------
-
-        recommendButton =
-                new JButton(
-                        "Recommend"
-                );
-
-
-        recommendButton.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        14
-                )
-        );
-
-
-        recommendButton.setFocusPainted(false);
-
-
-        controlPanel.add(
+        controls.add(
                 recommendButton,
                 BorderLayout.EAST
         );
 
-
-        mainPanel.add(
-                controlPanel,
+        main.add(
+                controls,
                 BorderLayout.PAGE_START
         );
 
+        JPanel center = new JPanel(
+                new BorderLayout(15, 15)
+        );
 
-        // -----------------------------------------------------
-        // Center panel
-        // -----------------------------------------------------
-
-        JPanel centerPanel =
-                new JPanel(
-                        new BorderLayout(15, 15)
-                );
-
-
-        centerPanel.setBackground(
+        center.setBackground(
                 new Color(25, 25, 25)
         );
 
-
-        // -----------------------------------------------------
-        // Result area
-        // -----------------------------------------------------
-
-        resultArea =
-                new JTextArea();
-
+        resultArea = new JTextArea();
 
         resultArea.setEditable(false);
-
-
         resultArea.setLineWrap(true);
-
-
         resultArea.setWrapStyleWord(true);
 
-
         resultArea.setFont(
-                new Font(
-                        "Arial",
-                        Font.PLAIN,
-                        16
-                )
+                new Font("Arial", Font.PLAIN, 16)
         );
 
-
-        resultArea.setForeground(
-                Color.WHITE
-        );
-
-
+        resultArea.setForeground(Color.WHITE);
         resultArea.setBackground(
                 new Color(40, 40, 40)
         );
 
-
         resultArea.setBorder(
-                new EmptyBorder(
-                        15,
-                        15,
-                        15,
-                        15
-                )
+                new EmptyBorder(15, 15, 15, 15)
         );
 
-
-        JScrollPane scrollPane =
-                new JScrollPane(
-                        resultArea
-                );
-
-
-        centerPanel.add(
-                scrollPane,
+        center.add(
+                new JScrollPane(resultArea),
                 BorderLayout.CENTER
         );
 
-
-        // -----------------------------------------------------
-        // Poster panel
-        // -----------------------------------------------------
-
-        JPanel posterPanel =
-                new JPanel(
-                        new BorderLayout()
-                );
-
-
-        posterPanel.setBackground(
-                new Color(25, 25, 25)
+        posterLabel = new JLabel(
+                "Poster",
+                SwingConstants.CENTER
         );
 
-
-        posterLabel =
-                new JLabel(
-                        "Poster",
-                        SwingConstants.CENTER
-                );
-
-
-        posterLabel.setForeground(
-                Color.WHITE
-        );
-
+        posterLabel.setForeground(Color.WHITE);
 
         posterLabel.setPreferredSize(
-                new Dimension(
-                        250,
-                        350
-                )
+                new Dimension(250, 350)
         );
 
-
-        posterPanel.add(
+        center.add(
                 posterLabel,
-                BorderLayout.CENTER
-        );
-
-
-        centerPanel.add(
-                posterPanel,
                 BorderLayout.EAST
         );
 
+        main.add(center, BorderLayout.CENTER);
 
-        mainPanel.add(
-                centerPanel,
-                BorderLayout.CENTER
-        );
+        statusLabel = new JLabel("Ready");
+        statusLabel.setForeground(Color.LIGHT_GRAY);
 
-
-        // -----------------------------------------------------
-        // Status label
-        // -----------------------------------------------------
-
-        statusLabel =
-                new JLabel(
-                        "Ready"
-                );
-
-
-        statusLabel.setForeground(
-                Color.LIGHT_GRAY
-        );
-
-
-        statusLabel.setFont(
-                new Font(
-                        "Arial",
-                        Font.ITALIC,
-                        13
-                )
-        );
-
-
-        mainPanel.add(
+        main.add(
                 statusLabel,
                 BorderLayout.SOUTH
         );
 
-
-        // -----------------------------------------------------
-        // Button Action
-        // -----------------------------------------------------
-
         recommendButton.addActionListener(
-                new ActionListener() {
-
-                    @Override
-                    public void actionPerformed(
-                            ActionEvent e) {
-
-                        showRecommendations();
-                    }
-                }
+                e -> showRecommendations()
         );
 
-
-        // -----------------------------------------------------
-        // Add panel to frame
-        // -----------------------------------------------------
-
-        add(mainPanel);
+        add(main);
     }
 
-
-    // =========================================================
-    // SHOW RECOMMENDATIONS
-    // =========================================================
+    // ---------------- SHOW RESULTS ----------------
 
     void showRecommendations() {
 
-        if (movieComboBox.getSelectedItem()
-                == null) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Please select a movie."
-            );
-
+        if (movieBox.getSelectedItem() == null)
             return;
+
+        String title =
+                movieBox.getSelectedItem().toString();
+
+        Movie selected = null;
+
+        for (Movie movie : movies) {
+
+            if (movie.title.equals(title)) {
+                selected = movie;
+                break;
+            }
         }
 
-
-        String selectedTitle =
-                movieComboBox
-                        .getSelectedItem()
-                        .toString();
-
-
-        Movie selectedMovie =
-                findMovie(selectedTitle);
-
-
-        if (selectedMovie == null) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Movie not found."
-            );
-
+        if (selected == null)
             return;
-        }
 
-
-        // -----------------------------------------------------
-        // Disable button while processing
-        // -----------------------------------------------------
+        Movie finalSelected = selected;
 
         recommendButton.setEnabled(false);
-
-
         statusLabel.setText(
-                "Calculating recommendations..."
+                "Generating recommendations..."
         );
 
-
-        resultArea.setText(
-                "Please wait..."
-        );
-
-
-        posterLabel.setText(
-                "Loading poster..."
-        );
-
-
+        resultArea.setText("Please wait...");
         posterLabel.setIcon(null);
+        posterLabel.setText("Loading poster...");
 
+        SwingWorker<Result, Void> worker =
+                new SwingWorker<Result, Void>() {
 
-        // -----------------------------------------------------
-        // Background worker
-        // -----------------------------------------------------
+            protected Result doInBackground()
+                    throws Exception {
 
-        SwingWorker<RecommendationResult, Void> worker =
-                new SwingWorker<RecommendationResult, Void>() {
+                ArrayList<MovieScore> recommendations =
+                        recommend(finalSelected);
 
+                OMDbMovie info =
+                        getOMDbMovie(finalSelected.title);
 
-                    @Override
-                    protected RecommendationResult doInBackground()
-                            throws Exception {
+                Image poster = null;
 
+                if (info != null &&
+                    info.poster != null &&
+                    !info.poster.equals("N/A") &&
+                    !info.poster.isEmpty()) {
 
-                        // -------------------------------------
-                        // Calculate recommendations
-                        // -------------------------------------
-
-                        ArrayList<MovieScore> recommendations =
-                                calculateRecommendations(
-                                        selectedMovie
-                                );
-
-
-                        // -------------------------------------
-                        // Get OMDb information
-                        // -------------------------------------
-
-                        OMDbMovie omdbMovie =
-                                getOMDbMovie(
-                                        selectedMovie.title
-                                );
-
-
-                        // -------------------------------------
-                        // Get poster image
-                        // -------------------------------------
-
-                        Image posterImage = null;
-
-
-                        if (omdbMovie != null
-                                && omdbMovie.poster != null
-                                && !omdbMovie.poster.equals("N/A")
-                                && !omdbMovie.poster.isEmpty()) {
-
-                            try {
-
-                                URL imageURL =
-                                        new URL(
-                                                omdbMovie.poster
-                                        );
-
-
-                                posterImage =
-                                        ImageIO.read(
-                                                imageURL
-                                        );
-
-
-                            } catch (Exception ex) {
-
-                                posterImage = null;
-                            }
-                        }
-
-
-                        return new RecommendationResult(
-                                recommendations,
-                                omdbMovie,
-                                posterImage
+                    try {
+                        poster = ImageIO.read(
+                                new URL(info.poster)
                         );
-                    }
+                    } catch (Exception ignored) {}
+                }
 
+                return new Result(
+                        recommendations,
+                        info,
+                        poster
+                );
+            }
 
-                    @Override
-                    protected void done() {
+            protected void done() {
 
-                        try {
+                try {
+                    displayResults(
+                            finalSelected,
+                            get()
+                    );
 
-                            RecommendationResult result =
-                                    get();
+                } catch (Exception e) {
 
+                    resultArea.setText(
+                            "Error: " + e.getMessage()
+                    );
 
-                            displayResults(
-                                    selectedMovie,
-                                    result
-                            );
+                } finally {
 
-
-                        } catch (Exception ex) {
-
-                            resultArea.setText(
-                                    "Error:\n"
-                                            + ex.getMessage()
-                            );
-
-
-                            statusLabel.setText(
-                                    "Error occurred."
-                            );
-
-
-                        } finally {
-
-                            recommendButton.setEnabled(
-                                    true
-                            );
-                        }
-                    }
-                };
-
+                    recommendButton.setEnabled(true);
+                }
+            }
+        };
 
         worker.execute();
     }
 
-
-    // =========================================================
-    // RECOMMENDATION RESULT CLASS
-    // =========================================================
-
-    static class RecommendationResult {
+    static class Result {
 
         ArrayList<MovieScore> recommendations;
+        OMDbMovie info;
+        Image poster;
 
-        OMDbMovie omdbMovie;
-
-        Image posterImage;
-
-
-        RecommendationResult(
+        Result(
                 ArrayList<MovieScore> recommendations,
-                OMDbMovie omdbMovie,
-                Image posterImage) {
+                OMDbMovie info,
+                Image poster) {
 
-            this.recommendations =
-                    recommendations;
-
-            this.omdbMovie =
-                    omdbMovie;
-
-            this.posterImage =
-                    posterImage;
+            this.recommendations = recommendations;
+            this.info = info;
+            this.poster = poster;
         }
     }
 
-
-    // =========================================================
-    // DISPLAY RESULTS
-    // =========================================================
+    // ---------------- DISPLAY ----------------
 
     void displayResults(
-            Movie selectedMovie,
-            RecommendationResult result) {
-
+            Movie selected,
+            Result result) {
 
         StringBuilder output =
                 new StringBuilder();
 
+        output.append("SELECTED MOVIE\n");
+        output.append("==============================\n");
+        output.append("Title: ")
+                .append(selected.title)
+                .append("\n");
+        output.append("Dataset Rating: ")
+                .append(selected.rating)
+                .append("\n\n");
 
-        // -----------------------------------------------------
-        // Selected Movie
-        // -----------------------------------------------------
+        if (result.info != null) {
 
-        output.append(
-                "SELECTED MOVIE\n"
-        );
-
-
-        output.append(
-                "==============================\n"
-        );
-
-
-        output.append(
-                "Title: "
-                        + selectedMovie.title
-                        + "\n"
-        );
-
-
-        output.append(
-                "Dataset Rating: "
-                        + selectedMovie.rating
-                        + "\n\n"
-        );
-
-
-        // -----------------------------------------------------
-        // OMDb Details
-        // -----------------------------------------------------
-
-        if (result.omdbMovie != null) {
-
-            output.append(
-                    "OMDb DETAILS\n"
-            );
-
-
-            output.append(
-                    "==============================\n"
-            );
-
-
-            output.append(
-                    "Year: "
-                            + result.omdbMovie.year
-                            + "\n"
-            );
-
-
-            output.append(
-                    "Director: "
-                            + result.omdbMovie.director
-                            + "\n"
-            );
-
-
-            output.append(
-                    "Actors: "
-                            + result.omdbMovie.actors
-                            + "\n"
-            );
-
-
-            output.append(
-                    "IMDb Rating: "
-                            + result.omdbMovie.imdbRating
-                            + "\n\n"
-            );
+            output.append("OMDb DETAILS\n");
+            output.append("==============================\n");
+            output.append("Year: ")
+                    .append(result.info.year)
+                    .append("\n");
+            output.append("Director: ")
+                    .append(result.info.director)
+                    .append("\n");
+            output.append("Actors: ")
+                    .append(result.info.actors)
+                    .append("\n");
+            output.append("IMDb Rating: ")
+                    .append(result.info.imdbRating)
+                    .append("\n\n");
         }
 
-
-        // -----------------------------------------------------
-        // Recommendations
-        // -----------------------------------------------------
-
-        output.append(
-                "TOP 5 RECOMMENDATIONS\n"
-        );
-
-
-        output.append(
-                "==============================\n\n"
-        );
-
+        output.append("TOP 5 RECOMMENDATIONS\n");
+        output.append("==============================\n\n");
 
         int rank = 1;
-
 
         for (MovieScore score :
                 result.recommendations) {
 
+            output.append(rank++)
+                    .append(". ")
+                    .append(score.movie.title)
+                    .append("\n");
 
-            output.append(
-                    rank
-                            + ". "
-                            + score.movie.title
-                            + "\n"
-            );
-
-
-            output.append(
-                    "   Similarity Score: "
-                            + String.format(
+            output.append("   Similarity Score: ")
+                    .append(
+                            String.format(
                                     "%.4f",
                                     score.score
                             )
-                            + "\n"
-            );
+                    )
+                    .append("\n");
 
-
-            output.append(
-                    "   Dataset Rating: "
-                            + score.movie.rating
-                            + "\n\n"
-            );
-
-
-            rank++;
+            output.append("   Dataset Rating: ")
+                    .append(score.movie.rating)
+                    .append("\n\n");
         }
-
 
         resultArea.setText(
                 output.toString()
         );
 
+        if (result.poster != null) {
 
-        // -----------------------------------------------------
-        // Display poster
-        // -----------------------------------------------------
-
-        if (result.posterImage != null) {
-
-
-            Image scaledImage =
-                    result.posterImage.getScaledInstance(
+            Image scaled =
+                    result.poster.getScaledInstance(
                             250,
                             350,
                             Image.SCALE_SMOOTH
                     );
 
-
             posterLabel.setIcon(
-                    new ImageIcon(
-                            scaledImage
-                    )
+                    new ImageIcon(scaled)
             );
 
-
-            posterLabel.setText(
-                    ""
-            );
-
+            posterLabel.setText("");
 
         } else {
 
             posterLabel.setIcon(null);
-
-
             posterLabel.setText(
                     "Poster not available"
             );
         }
-
 
         statusLabel.setText(
                 "Recommendations generated successfully."
         );
     }
 
+    // ---------------- MAIN ----------------
 
-    // =========================================================
-    // MAIN METHOD
-    // =========================================================
+    public static void main(String[] args) {
 
-    public static void main(
-            String[] args) {
-
-
-        // -----------------------------------------------------
-        // Load CSV
-        // -----------------------------------------------------
-
-        loadMovies(
-                "movies.csv"
-        );
-
-
-        // -----------------------------------------------------
-        // Check if movies loaded
-        // -----------------------------------------------------
+        loadMovies("movies.csv");
 
         if (movies.isEmpty()) {
 
             JOptionPane.showMessageDialog(
                     null,
-                    "No movies were loaded.\n\n"
-                            + "Make sure movies.csv is in "
-                            + "the same folder as Main.java."
+                    "No movies were loaded.\n" +
+                    "Make sure movies.csv is in the same folder."
             );
 
             return;
         }
 
+        SwingUtilities.invokeLater(() -> {
 
-        // -----------------------------------------------------
-        // Start GUI
-        // -----------------------------------------------------
-
-        SwingUtilities.invokeLater(
-                new Runnable() {
-
-                    @Override
-                    public void run() {
-
-                        Main app =
-                                new Main();
-
-                        app.setVisible(true);
-                    }
-                }
-        );
+            Main app = new Main();
+            app.setVisible(true);
+        });
     }
 }
